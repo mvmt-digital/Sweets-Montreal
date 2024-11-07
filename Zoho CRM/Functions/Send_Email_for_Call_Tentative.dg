@@ -1,0 +1,103 @@
+void automation.Send_Email_for_Call_Tentative(Int contactId)
+{
+resp = zoho.crm.getRecordById("Contacts",contactId);
+info resp;
+contactStatus = resp.get("Contact_Status");
+language = resp.get("Contact_Language");
+info language;
+fullName = resp.get("Full_Name");
+emailAddress = resp.get("Email");
+contactPhone = resp.get("Mobile");
+if(language == "French")
+{
+	if(contactStatus == "Call 1 missed")
+	{
+		templateID = 5816576000002558814;
+	}
+	else if(contactStatus == "Call 2 missed")
+	{
+		templateID = 5816576000002558831;
+	}
+	else if(contactStatus == "Call 3 missed")
+	{
+		templateID = 5816576000002558840;
+	}
+}
+else
+{
+	if(contactStatus == "Call 1 missed")
+	{
+		templateID = 5816576000002541387;
+	}
+	else if(contactStatus == "Call 2 missed")
+	{
+		templateID = 5816576000002541396;
+	}
+	else if(contactStatus == "Call 3 missed")
+	{
+		templateID = 5816576000002541405;
+	}
+}
+
+// Close tasks related to the contact that contain "Call Tentative 1 Follow Up" in their name
+relatedTask = zoho.crm.getRelatedRecords("Tasks","Contacts",contactId.toLong(),1,200);
+mapVariable = Map();
+for each  task in relatedTask
+{
+	taskID = ifnull(task.get("id"),"");
+	status = ifnull(task.get("Status"),"");
+	taskName = ifnull(task.get("Subject"),"");
+	// Get the task name (Subject field)
+	// Check if the task is not completed and if the name contains "call Tentative 1"
+	if(contactStatus == "Call 2 missed")
+	{
+		if(status != "Completed" && taskName.contains("Call Tentative 1"))
+		{
+			mapVariable.put("Status","Completed");
+			updateTask = zoho.crm.updateRecord("Tasks",taskID.toLong(),mapVariable);
+			info updateTask;
+		}
+	}
+	else if(contactStatus == "Call 3 missed")
+	{
+		if(status != "Completed" && taskName.contains("Call Tentative 2"))
+		{
+			mapVariable.put("Status","Completed");
+			updateTask = zoho.crm.updateRecord("Tasks",taskID.toLong(),mapVariable);
+			info updateTask;
+		}
+	}
+}
+
+if(language != null)
+{
+	info "Inside the Loop";
+	fmp = Map();
+	fmp.put("email",zoho.loginuserid);
+	emaillist = List();
+	emp = Map();
+	emp.put("email",emailAddress);
+	emaillist.add(emp);
+	mp = Map();
+	mp.put("to",emaillist);
+	mp.put("id",contactId.toLong());
+	tempIDMap = Map();
+	tempIDMap.put("id",templateID);
+	mp.put("template",tempIDMap);
+	mp.put("from",fmp);
+	datalist = List();
+	datalist.add(mp);
+	paramp = Map();
+	paramp.put("data",datalist);
+	info paramp;
+	sendEmailURL = "https://www.zohoapis.com/crm/v5/Contacts/" + contactId + "/actions/send_mail";
+	sendEmail = invokeurl
+	[
+		url :sendEmailURL
+		type :POST
+		parameters:paramp.toString()
+		connection:"zoho_crm_connection"
+	];
+	info sendEmail;
+}
+}
